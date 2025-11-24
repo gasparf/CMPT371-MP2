@@ -21,3 +21,6 @@ while True: # Forever Loop
     # Send the upper case string back to the same client
     serverSocket.sendto(modifiedMessage.encode(), clientAddress)
 
+
+#TODO: implement flow & congestion control as part of a PRTP protocol, may have to create a new file to contain the packet data implementation
+
