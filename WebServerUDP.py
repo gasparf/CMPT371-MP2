@@ -59,9 +59,10 @@ while True: # Forever Loop
     message, clientAddress = serverSocket.recvfrom(2048)
 
     sentence = message.decode()
-    print(sentence)
+    print("sentence: ",sentence)
 
     lines = sentence.split("\r\n")
+    print("lines size: ",len(lines))
     try: #load sequence number
         if (len(lines) > 1):
             sequence_number = lines[0]
@@ -72,14 +73,15 @@ while True: # Forever Loop
     try: #load data
         if (len(lines) > 2):
             for i in lines:
-                if(i > 1):
+                if(i > 4):
                     data += lines[i]
+                    print("data: ",data)
     except:
         print("Please input a number for equence number")
     
 
 
-    print(sequence_number, data)
+    #print("data: ",data)
     modifiedMessage = handle_incoming_frame(sequence_number, data, send_ack)
 
 
@@ -89,11 +91,11 @@ while True: # Forever Loop
 
     
     # Uppder Case (as the simple function intended)
-    modifiedMessage = message.decode().upper()
+    #modifiedMessage = message.decode().upper()
     
     # Send the upper case string back to the same client
     serverSocket.sendto(modifiedMessage.encode(), clientAddress)
-    print(modifiedMessage)
+
 
 
 #TODO: implement flow & congestion control as part of a PRTP protocol, may have to create a new file to contain the packet data implementation
