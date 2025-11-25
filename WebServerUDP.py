@@ -1,7 +1,8 @@
 # Include Python's Socket Library
 from socket import *
+from prtp_packet import PRTPPacket
+import sys
 import time
-
 
 #initialize checksum and sequence number
 
@@ -9,6 +10,8 @@ EXPECTED_SEQ = 1
 ack = "NAK"
 data = ""
 sequence_number = -1
+
+
 
 
 def handle_incoming_frame(seq, data, send_ack):
@@ -35,14 +38,22 @@ def handle_incoming_frame(seq, data, send_ack):
     return msg
 
 
-def send_ack(seq):
-    ack_message = str(seq)
-    ack_message += "ACK"
-    return ack_message   # your low-level send
+def send_ack(self, ack_num, client_addr):
+    # send cumulative ACK w/ flow control window
+    
+    # Args:
+    # ack_num: sequence number
+    # client_addr: address to send ACK to
 
-
-
-
+    ack_packet = PRTPPacket(
+        seq_num=self.seq_num,
+        ack_num=ack_num,
+        window_size=self.available_buffer,
+        flags=PRTPPacket.FLAG_ACK
+    )
+    self.socket.sendto(ack_packet.serialize(), client_addr) # serialize contains checksum & checksum validation
+    print(f"[RECEIVER] Sent cumulative ACK {ack_num} "f"(window={self.available_buffer}B, buffer_used={len(self.received_data)}B)")
+    
 # Define Server Port
 serverPort = 12000
 
