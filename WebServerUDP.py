@@ -5,7 +5,13 @@ import sys
 import time
 
 class GoBackNReceiver:
-
+    # Go-Back-N Receiver with 3-way handshake and Flow Control
+    # - Connection establishment (SYN -> SYN-ACK -> ACK)
+    # - Receives packets in order
+    # - Sends cumulative ACKs with advertised window
+    # - Discards out-of-order packets (Go-Back-N behavior)
+    # - Checksum validation for all packets
+    
     def __init__(self, port):
         # intialize the receiver
         # Args:
