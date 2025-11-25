@@ -4,6 +4,7 @@ from prtp_packet import PRTPPacket
 import threading
 import time
 import sys
+import random
 
 class GoBackNSender:
     # Go-Back-N Sender Implementation with Flow & Congestion Control
@@ -13,16 +14,20 @@ class GoBackNSender:
     # - AIMD congestion control (Additive Increase, Multiplicative Decrease)
     # - Flow control via receiver advertised window
     
-    def __init__(self, window_size=5, timeout=2.0):
+    def __init__(self, window_size=5, timeout=2.0, loss_rate=0.0):
 
         # Initialize Go-Back-N Sender
         
         # Args:
         #     window_size: Initial maximum number of unacknowledged packets
         #     timeout: Timeout interval in seconds
+        #     loss_rate: Probability of packet loss (0.0 to 1.0)
 
         self.socket = socket(AF_INET, SOCK_DGRAM)
         self.socket.settimeout(0.1)  # Non-blocking for ACK reception
+        
+        # Packet loss simulation
+        self.loss_rate = loss_rate
         
         # Go-Back-N parameters
         self.max_window_size = window_size  # Maximum allowed window
@@ -220,6 +225,12 @@ class GoBackNSender:
         while self.running:
             try:
                 data, addr = self.socket.recvfrom(PRTPPacket.MAX_PACKET_SIZE)
+                
+                # Simulate packet loss at receiver
+                if self.loss_rate > 0 and random.random() < self.loss_rate:
+                    print(f"[SIMULATOR] Dropped received ACK packet")
+                    continue
+                
                 ack_packet = PRTPPacket.deserialize(data)
                 
                 if ack_packet and ack_packet.has_flag(PRTPPacket.FLAG_ACK):
@@ -308,20 +319,23 @@ class GoBackNSender:
 def main():
     # Main client function
     if len(sys.argv) < 3:
-        print("Usage: python3 WebClientUDP.py <host> <port> [max_window_size]")
+        print("Usage: python3 WebClientUDP.py <host> <port> [max_window_size] [loss_rate]")
         sys.exit(1)
     
     serverName = sys.argv[1]
     serverPort = int(sys.argv[2])
     max_window_size = int(sys.argv[3]) if len(sys.argv) > 3 else 64  # Larger default for AIMD
+    loss_rate = float(sys.argv[4]) if len(sys.argv) > 4 else 0.0
     
     print("=" * 60)
     print("Go-Back-N Client with Flow & Congestion Control (AIMD)")
     print("=" * 60)
+    if loss_rate > 0:
+        print(f"Packet Loss Rate: {loss_rate*100:.1f}%")
     
     try:
         # Create Go-Back-N sender with flow & congestion control
-        sender = GoBackNSender(window_size=max_window_size, timeout=2.0)
+        sender = GoBackNSender(window_size=max_window_size, timeout=2.0, loss_rate=loss_rate)
         
         # Connect to server
         if sender.connect(serverName, serverPort):

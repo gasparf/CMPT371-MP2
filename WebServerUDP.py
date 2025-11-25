@@ -3,6 +3,7 @@ from socket import *
 from prtp_packet import PRTPPacket
 import sys
 import time
+import random
 
 class GoBackNReceiver:
 
@@ -14,12 +15,13 @@ class GoBackNReceiver:
     # - Checksum validation for all packets
 
     
-    def __init__(self, port):
+    def __init__(self, port, loss_rate=0.0):
 
         # Initialize Go-Back-N Receiver
         
         # Args:
         #     port: Local port to bind
+        #     loss_rate: Probability of packet loss (0.0 to 1.0)
 
         self.socket = socket(AF_INET, SOCK_DGRAM)
         self.socket.bind(('', port))
@@ -36,7 +38,12 @@ class GoBackNReceiver:
         self.received_data = b''
         self.available_buffer = self.MAX_BUFFER_SIZE
         
+        # Packet loss simulation
+        self.loss_rate = loss_rate
+        
         print(f"[GBN RECEIVER] Listening on port {port}")
+        if loss_rate > 0:
+            print(f"[SIMULATOR] Packet loss enabled: {loss_rate*100:.1f}%")
     
     def listen(self):
 
@@ -188,6 +195,12 @@ class GoBackNReceiver:
             try:
                 # Receive packet
                 data, addr = self.socket.recvfrom(PRTPPacket.MAX_PACKET_SIZE)
+                
+                # Simulate packet loss at receiver
+                if self.loss_rate > 0 and random.random() < self.loss_rate:
+                    print("[SIMULATOR] Dropped received data packet")
+                    continue
+                
                 packet = PRTPPacket.deserialize(data)  # Validates checksum automatically
                 
                 if packet is None:
@@ -223,18 +236,21 @@ class GoBackNReceiver:
 
 def main():
     # Main server function
-    # Define Server Port 
+    # Define Server Port and optional loss rate
     serverPort = int(sys.argv[1]) if len(sys.argv) > 1 else 12000
+    loss_rate = float(sys.argv[2]) if len(sys.argv) > 2 else 0.0
     
     print("=" * 70)
     print("Go-Back-N PRTP Server")
     print("Connection-Oriented | Pipelined | Flow Control | Checksum Validation")
     print("=" * 70)
     print(f"Port: {serverPort}")
+    if loss_rate > 0:
+        print(f"Packet Loss Rate: {loss_rate*100:.1f}%")
     print("-" * 70)
     
     # Create receiver ONCE outside the loop
-    receiver = GoBackNReceiver(serverPort)
+    receiver = GoBackNReceiver(serverPort, loss_rate=loss_rate)
     
     while True:  # Forever Loop 
         try:
