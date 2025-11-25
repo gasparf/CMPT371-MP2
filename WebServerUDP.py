@@ -41,7 +41,49 @@ def listen(self):
     print("[HANDSHAKE] Waiting for connection...")
     
         # Wait for SYN packet
+    try:
+        while True:
+            data, addr = self.socket.recvfrom(PRTPPacket.MAX_PACKET_SIZE)
+            syn_packet = PRTPPacket.deserialize(data) # validate checksum here through deseralize
+                
+            if syn_packet and syn_packet.has_flag(PRTPPacket.FLAG_SYN):
+                print(f"[HANDSHAKE] Received SYN from {addr}, seq={syn_packet.seq_num}")
+                self.client_addr = addr
+                    
+                # Send SYN-ACK
+                self.seq_num = 0
+                syn_ack_packet = PRTPPacket(
+                    seq_num=self.seq_num,
+                    ack_num=syn_packet.seq_num+1,
+                    window_size=self.available_buffer,
+                    flags=PRTPPacket.FLAG_SYN | PRTPPacket.FLAG_ACK
+                )
+                self.socket.sendto(syn_ack_packet.serialize(), self.client_addr)
+                print(f"[HANDSHAKE] Sent SYN-ACK, seq={self.seq_num}, ack={syn_packet.seq_num+1}")
+                    
+                # Wait for ACK packet
+                data, addr = self.socket.recvfrom(PRTPPacket.MAX_PACKET_SIZE)
+                ack_packet = PRTPPacket.deserialize(data)
+                    
+                if ack_packet and ack_packet.has_flag(PRTPPacket.FLAG_ACK):
+                    print(f"[HANDSHAKE] Received ACK, seq={ack_packet.seq_num}, ack={ack_packet.ack_num}")
+                    self.expected_seq = ack_packet.ack_num # Next expected seq num from sender
+                    self.connected = True
+                        
+                    print("[HANDSHAKE] Connection established!")
+                    print("[RECEIVER] Ready to receive data. Flow control window size:", self.available_buffer)
+                    return True
+                else:
+                    print("[HANDSHAKE] Invalid ACK packet, waiting for new SYN")
+                    continue
+    except timeout:
+            print("[HANDSHAKE] Timeout waiting for SYN, retrying...")
+            return False
+    except Exception as e:
+            print(f"[HANDSHAKE] Error: {e}")
+            return False
         
+
 
 def handle_incoming_frame(seq, data, send_ack):
     global EXPECTED_SEQ
