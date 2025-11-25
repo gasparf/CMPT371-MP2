@@ -320,23 +320,44 @@ def main():
         
         # Connect to server
         if sender.connect(serverName, serverPort):
-            # Get message from user
-            message = input('Input lowercase sentence: ')
+            print("\n[CLIENT] Connection established. Enter messages to send.")
+            print("[CLIENT] Type 'quit' or 'exit' to close the connection.\n")
             
-            print(f"\n[CLIENT] Sending message: '{message}'")
-            print(f"[CLIENT] Message size: {len(message)} bytes")
-            print("-" * 60)
-            
-            # Send data using Go-Back-N with AIMD
-            start_time = time.time()
-            bytes_sent = sender.send_data(message.encode('utf-8'))
-            end_time = time.time()
-            
-            print("-" * 60)
-            print(f"[CLIENT] Successfully sent {bytes_sent} bytes")
-            print(f"[CLIENT] Transfer time: {end_time - start_time:.3f} seconds")
-            print(f"[CLIENT] Final cwnd: {sender.cwnd:.2f} packets")
-            print(f"[CLIENT] Final state: {sender.state}")
+            # Keep accepting input until user quits
+            while True:
+                try:
+                    # Get message from user
+                    message = input('Input lowercase sentence: ')
+                    
+                    # Check if user wants to quit
+                    if message.lower() in ['quit', 'exit']:
+                        print("[CLIENT] Closing connection...")
+                        break
+                    
+                    # Skip empty messages
+                    if not message.strip():
+                        continue
+                    
+                    print(f"\n[CLIENT] Sending message: '{message}'")
+                    print(f"[CLIENT] Message size: {len(message)} bytes")
+                    print("-" * 60)
+                    
+                    # Send data using Go-Back-N with AIMD
+                    start_time = time.time()
+                    bytes_sent = sender.send_data(message.encode('utf-8'))
+                    end_time = time.time()
+                    
+                    print("-" * 60)
+                    print(f"[CLIENT] Successfully sent {bytes_sent} bytes")
+                    print(f"[CLIENT] Transfer time: {end_time - start_time:.3f} seconds")
+                    print(f"[CLIENT] Current cwnd: {sender.cwnd:.2f} packets")
+                    print(f"[CLIENT] Current state: {sender.state}")
+                    print()
+                    
+                except EOFError:
+                    # Handle Ctrl+D
+                    print("\n[CLIENT] EOF detected, closing connection...")
+                    break
             
             # Wait a bit for final ACKs
             time.sleep(0.5)
@@ -356,4 +377,5 @@ def main():
         sys.exit(1)
 
 
-    
+if __name__ == "__main__":
+    main()
