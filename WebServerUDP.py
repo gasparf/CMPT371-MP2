@@ -137,49 +137,47 @@ class GoBackNReceiver:
 
 
     print ("The server is ready to receive")
-    def main():
-        # MAIN SERVER LOOP
-        while True: # Forever Loop
-            # Read from UDP Socket into message & client address
-            message, clientAddress = serverSocket.recvfrom(2048)
+        
+    # MAIN SERVER LOOP
+    while True: # Forever Loop
+        
+        # Read from UDP Socket into message & client address
+        message, clientAddress = serverSocket.recvfrom(2048)
 
-            sentence = message.decode()
-            print("sentence: ",sentence)
+        sentence = message.decode()
+        print("sentence: ",sentence)
 
-            lines = sentence.split("\r\n")
-            print("lines size: ",len(lines))
-            try: #load sequence number
-                if (len(lines) > 1):
-                    sequence_number = lines[0]
-                    ack = lines[2]
-            except:
-                print("Please input a number for sequence number")
+        lines = sentence.split("\r\n")
+        print("lines size: ",len(lines))
+        try: #load sequence number
+            if (len(lines) > 1):
+                sequence_number = lines[0]
+                ack = lines[2]
+        except:
+            print("Please input a number for sequence number")
 
-            try: #load data
-                if (len(lines) > 2):
-                    for i in lines:
-                        if(i > 4):
-                            data += lines[i]
-                            print("data: ",data)
-            except:
-                print("Please input a number for equence number")
-            
+        try: #load data
+            if (len(lines) > 2):
+                for i in lines:
+                    if(i > 4):
+                        data += lines[i]
+                        print("data: ",data)
+        except:
+            print("Please input a number for equence number")
+        
 
+        #listen for handshake
+        
+        listen()
 
-            #print("data: ",data)
-            modifiedMessage = handle_incoming_frame(sequence_number, data, send_ack)
+        #print("data: ",data)
+        modifiedMessage = handle_incoming_frame(sequence_number, data, send_ack)
 
-
-
-
-
-
-            
-            # Uppder Case (as the simple function intended)
-            #modifiedMessage = message.decode().upper()
-            
-            # Send the upper case string back to the same client
-            serverSocket.sendto(modifiedMessage.encode(), clientAddress)
+        # Uppder Case (as the simple function intended)
+        #modifiedMessage = message.decode().upper()
+        
+        # Send the upper case string back to the same client
+        serverSocket.sendto(modifiedMessage.encode(), clientAddress)
 
 
 

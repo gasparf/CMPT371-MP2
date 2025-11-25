@@ -300,60 +300,60 @@ class GoBackNSender:
         print("[GBN SENDER] Connection closed")
 
 
-def main():
-    # Main client function
-    if len(sys.argv) < 3:
-        print("Usage: python3 WebClientUDP.py <host> <port> [max_window_size]")
-        sys.exit(1)
+
+# Main client function
+if len(sys.argv) < 3:
+    print("Usage: python3 WebClientUDP.py <host> <port> [max_window_size]")
+    sys.exit(1)
+
+serverName = sys.argv[1]
+serverPort = int(sys.argv[2])
+max_window_size = int(sys.argv[3]) if len(sys.argv) > 3 else 64  # Larger default for AIMD
+
+print("=" * 60)
+print("Go-Back-N Client with Flow & Congestion Control (AIMD)")
+print("=" * 60)
+
+try:
+    # Create Go-Back-N sender with flow & congestion control
+    sender = GoBackNSender(window_size=max_window_size, timeout=2.0)
     
-    serverName = sys.argv[1]
-    serverPort = int(sys.argv[2])
-    max_window_size = int(sys.argv[3]) if len(sys.argv) > 3 else 64  # Larger default for AIMD
-    
-    print("=" * 60)
-    print("Go-Back-N Client with Flow & Congestion Control (AIMD)")
-    print("=" * 60)
-    
-    try:
-        # Create Go-Back-N sender with flow & congestion control
-        sender = GoBackNSender(window_size=max_window_size, timeout=2.0)
+    # Connect to server
+    if sender.connect(serverName, serverPort):
+        # Get message from user
+        message = input('Input lowercase sentence: ')
         
-        # Connect to server
-        if sender.connect(serverName, serverPort):
-            # Get message from user
-            message = input('Input lowercase sentence: ')
-            
-            print(f"\n[CLIENT] Sending message: '{message}'")
-            print(f"[CLIENT] Message size: {len(message)} bytes")
-            print("-" * 60)
-            
-            # Send data using Go-Back-N with AIMD
-            start_time = time.time()
-            bytes_sent = sender.send_data(message.encode('utf-8'))
-            end_time = time.time()
-            
-            print("-" * 60)
-            print(f"[CLIENT] Successfully sent {bytes_sent} bytes")
-            print(f"[CLIENT] Transfer time: {end_time - start_time:.3f} seconds")
-            print(f"[CLIENT] Final cwnd: {sender.cwnd:.2f} packets")
-            print(f"[CLIENT] Final state: {sender.state}")
-            
-            # Wait a bit for final ACKs
-            time.sleep(0.5)
-            
-            # Close connection
-            sender.close()
-        else:
-            print("[CLIENT] Failed to connect")
-            sys.exit(1)
-    
-    except KeyboardInterrupt:
-        print("\n[CLIENT] Interrupted by user")
-    except Exception as e:
-        print(f"[CLIENT] Error: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"\n[CLIENT] Sending message: '{message}'")
+        print(f"[CLIENT] Message size: {len(message)} bytes")
+        print("-" * 60)
+        
+        # Send data using Go-Back-N with AIMD
+        start_time = time.time()
+        bytes_sent = sender.send_data(message.encode('utf-8'))
+        end_time = time.time()
+        
+        print("-" * 60)
+        print(f"[CLIENT] Successfully sent {bytes_sent} bytes")
+        print(f"[CLIENT] Transfer time: {end_time - start_time:.3f} seconds")
+        print(f"[CLIENT] Final cwnd: {sender.cwnd:.2f} packets")
+        print(f"[CLIENT] Final state: {sender.state}")
+        
+        # Wait a bit for final ACKs
+        time.sleep(0.5)
+        
+        # Close connection
+        sender.close()
+    else:
+        print("[CLIENT] Failed to connect")
         sys.exit(1)
+
+except KeyboardInterrupt:
+    print("\n[CLIENT] Interrupted by user")
+except Exception as e:
+    print(f"[CLIENT] Error: {e}")
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 
 
     
