@@ -11,8 +11,37 @@ ack = "NAK"
 data = ""
 sequence_number = -1
 
+def __init__(self, port):
+    # intialize the receiver
+    # Args:
+    # port: Local port to bind to
+    
+    self.socket = socket(AF_INET, SOCK_DGRAM)
+    self.socket.bind(('', port))
+    self.socket.settimeout(30.0)  # Set timeout for connection establishment
+    
+    # connection state
+    self.connected = False
+    self.client_addr = None
+    self.seq_num = 0
+    self.expected_seq = 0
+    
+    # flow control parameters
+    self.MAX_BUFFER_SIZE = 65535  # Maximum buffer size
+    self.received_data = b''  # Buffer for received data
+    self.available_buffer = self.MAX_BUFFER_SIZE
 
-
+    print(f"[RECEIVER] Initialized on port: {port}")
+    
+def listen(self):
+    # wait for incoming connections for 3-way handshake for PRTP requirements
+    # Returns:
+    # True if connection established, False otherwise
+    
+    print("[HANDSHAKE] Waiting for connection...")
+    
+        # Wait for SYN packet
+        
 
 def handle_incoming_frame(seq, data, send_ack):
     global EXPECTED_SEQ

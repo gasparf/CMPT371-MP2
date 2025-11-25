@@ -115,7 +115,7 @@ class GoBackNSender:
             self.ack_thread = threading.Thread(target=self._receive_acks, daemon=True)
             self.ack_thread.start()
             
-            print(f"[HANDSHAKE] ✓ Connection established!")
+            print(f"[HANDSHAKE] Connection established!")
             print(f"[CLIENT SENDER] Initial cwnd: {self.cwnd} packets, Slow Start Threshold: {self.ssthresh} packets")
             print(f"[CLIENT SENDER] Receiver window: {self.receiver_window} bytes")
             return True
@@ -146,7 +146,9 @@ class GoBackNSender:
         
         chunk_index = 0
         
+        # while oldest unack-ed packet seq num is less than total packets
         while self.base < total_packets:
+            # lock thread to prevent race conditions with other threads, i.e. recieve_acks()
             with self.lock:
                 # Calculate effective window (min of congestion window and flow control window)
                 # Convert receiver window from bytes to packets
@@ -167,9 +169,7 @@ class GoBackNSender:
                     
                     # Send packet
                     self.socket.sendto(packet.serialize(), self.peer_addr)
-                    
-                    # Calculate bytes in flight
-                    bytes_in_flight = (self.next_seq_num - self.base + 1) * self.MSS
+            
                     
                     print(f"[CLIENT SENDER] Sent packet {self.next_seq_num} "
                           f"(cwnd={self.cwnd:.2f}, rwnd={receiver_window_packets:.1f}, "
@@ -354,10 +354,6 @@ def main():
         import traceback
         traceback.print_exc()
         sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
 
 
     
