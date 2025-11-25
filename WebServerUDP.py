@@ -5,22 +5,22 @@ import sys
 import time
 
 class GoBackNReceiver:
-    """
-    Go-Back-N Receiver with 3-way handshake and Flow Control
-    - Connection establishment (SYN -> SYN-ACK -> ACK)
-    - Receives packets in order
-    - Sends cumulative ACKs with advertised window
-    - Discards out-of-order packets (Go-Back-N behavior)
-    - Checksum validation for all packets
-    """
+
+    # Go-Back-N Receiver with 3-way handshake and Flow Control
+    # - Connection establishment (SYN -> SYN-ACK -> ACK)
+    # - Receives packets in order
+    # - Sends cumulative ACKs with advertised window
+    # - Discards out-of-order packets (Go-Back-N behavior)
+    # - Checksum validation for all packets
+
     
     def __init__(self, port):
-        """
-        Initialize Go-Back-N Receiver
+
+        # Initialize Go-Back-N Receiver
         
-        Args:
-            port: Local port to bind
-        """
+        # Args:
+        #     port: Local port to bind
+
         self.socket = socket(AF_INET, SOCK_DGRAM)
         self.socket.bind(('', port))
         self.socket.settimeout(30.0)  # 30 second timeout for connection
@@ -39,13 +39,13 @@ class GoBackNReceiver:
         print(f"[GBN RECEIVER] Listening on port {port}")
     
     def listen(self):
-        """
-        Wait for incoming connection and perform 3-way handshake
-        Replaces the original connection setup
+
+        # Wait for incoming connection and perform 3-way handshake
+
         
-        Returns:
-            bool: True if connection established
-        """
+        # Returns:
+        #     bool: True if connection established
+
         print(f"[HANDSHAKE] Waiting for connection...")
         
         try:
@@ -77,11 +77,12 @@ class GoBackNReceiver:
                         print(f"[HANDSHAKE] Received ACK (seq={ack_packet.seq_num}, ack={ack_packet.ack_num})")
                         
                         # Connection established!
-                        self.expected_seq = ack_packet.seq_num  # Initialize EXPECTED_SEQ
+                        # Reset expected sequence to 0 for data transfer
+                        self.expected_seq = 0
                         self.connected = True
                         
-                        print(f"[HANDSHAKE] ✓ Connection established!")
-                        print(f"[GBN RECEIVER] Flow control window: {self.available_buffer}B")
+                        print(f"[HANDSHAKE] Connection established!")
+                        print(f"[SERVER RECEIVER] Flow control window: {self.available_buffer}B")
                         return True
                     else:
                         print("[HANDSHAKE] Invalid ACK, waiting for new SYN...")
@@ -95,16 +96,16 @@ class GoBackNReceiver:
             return False
     
     def handle_incoming_frame(self, packet):
-        """
-        Handle incoming data frame (replaces original handle_incoming_frame)
-        Implements Go-Back-N receiver logic
+
+        # Handle incoming data frame 
+        # Implements Go-Back-N receiver logic
         
-        Args:
-            packet: PRTPPacket object (already deserialized and checksum validated)
+        # Args:
+        #     packet: PRTPPacket object (already deserialized and checksum validated)
             
-        Returns:
-            bool: True if packet was accepted
-        """
+        # Returns:
+        #     bool: True if packet was accepted
+
         seq_num = packet.seq_num
         
         if seq_num == self.expected_seq:
@@ -118,7 +119,7 @@ class GoBackNReceiver:
             self.available_buffer = max(0, self.MAX_BUFFER_SIZE - len(self.received_data))
             
             # Send cumulative ACK
-            self._send_ack(self.expected_seq, self.client_addr)
+            self.send_ack(self.expected_seq, self.client_addr)
             
             # Move to next expected sequence
             self.expected_seq += 1
@@ -130,7 +131,7 @@ class GoBackNReceiver:
             print(f"[RECEIVER] Duplicate packet (seq={seq_num}, expected={self.expected_seq})")
             
             # Re-send ACK for duplicate (helps sender recover faster)
-            self._send_ack(seq_num, self.client_addr)
+            self.send_ack(seq_num, self.client_addr)
             
             return False
             
@@ -141,19 +142,18 @@ class GoBackNReceiver:
             
             # Send ACK for last correctly received packet (cumulative)
             if self.expected_seq > 0:
-                self._send_ack(self.expected_seq - 1, self.client_addr)
+                self.send_ack(self.expected_seq - 1, self.client_addr)
             
             return False
     
-    def _send_ack(self, ack_num, client_addr):
-        """
-        Send cumulative ACK with flow control window
-        Replaces original send_ack() function
-        
-        Args:
-            ack_num: Sequence number to acknowledge
-            client_addr: Client address to send ACK to
-        """
+    def send_ack(self, ack_num, client_addr):
+
+        # Send cumulative ACK with flow control window
+
+        # Args:
+        #     ack_num: Sequence number to acknowledge
+        #     client_addr: Client address to send ACK to
+
         ack_packet = PRTPPacket(
             seq_num=self.seq_num,
             ack_num=ack_num,
@@ -165,24 +165,24 @@ class GoBackNReceiver:
               f"(window={self.available_buffer}B, buffer_used={len(self.received_data)}B)")
     
     def receive(self, timeout_duration=10.0):
-        """
-        Receive data using Go-Back-N protocol with checksum validation
+
+        # Receive data using Go-Back-N protocol with checksum validation
         
-        Args:
-            timeout_duration: Maximum time to wait for data
+        # Args:
+        #     timeout_duration: Maximum time to wait for data
             
-        Returns:
-            bytes: Received data
-        """
+        # Returns:
+        #     bytes: Received data
+
         if not self.connected:
             raise Exception("Not connected - call listen() first")
         
         self.socket.settimeout(1.0)
         
-        print(f"[GBN RECEIVER] Waiting for packets (expected_seq={self.expected_seq})...")
+        print(f"[SERVER RECEIVER] Waiting for packets (expected_seq={self.expected_seq})...")
         
         last_activity = time.time()
-        idle_timeout = 30.0  # Stop receiving if no packets for 30 seconds (allows time for user input)
+        idle_timeout = 60.0  # Stop receiving if no packets for 30 seconds (allows time for user input)
         
         while True:
             try:
@@ -211,20 +211,19 @@ class GoBackNReceiver:
                         return None
                 continue
             except Exception as e:
-                print(f"[GBN RECEIVER] Error: {e}")
+                print(f"[SERVER RECEIVER] Error: {e}")
                 break
         
         return self.received_data
     
     def close(self):
-        """Close socket"""
         self.socket.close()
         print("[SERVER RECEIVER] Socket closed")
 
 
 def main():
-    """Main server function"""
-    # Define Server Port (from original code)
+    # Main server function
+    # Define Server Port 
     serverPort = int(sys.argv[1]) if len(sys.argv) > 1 else 12000
     
     print("=" * 70)
@@ -237,7 +236,7 @@ def main():
     # Create receiver ONCE outside the loop
     receiver = GoBackNReceiver(serverPort)
     
-    while True:  # Forever Loop (from original code)
+    while True:  # Forever Loop 
         try:
             # Wait for connection (3-way handshake)
             print("\n[SERVER] Waiting for new client connection...")
@@ -250,22 +249,35 @@ def main():
                 receiver.available_buffer = receiver.MAX_BUFFER_SIZE
                 continue
             
-            # Receive data using Go-Back-N with checksum validation
-            received_data = receiver.receive()
+            # Connection established, now handle multiple messages
+            print("[SERVER] Connection established. Ready to receive messages...")
             
-            if received_data:
-                # Process the data (Upper Case - as the simple function intended)
-                original = received_data.decode('utf-8', errors='ignore')
-                modifiedMessage = original.upper()  # From original code
+            while receiver.connected:
+                # Receive data using Go-Back-N with checksum validation
+                received_data = receiver.receive()
                 
-                print("-" * 70)
-                print(f"[SERVER] Received: '{original}'")
-                print(f"[SERVER] Uppercase: '{modifiedMessage}'")
-                print(f"[SERVER] Total bytes received: {len(received_data)}")
-                print("-" * 70)
+                if received_data:
+                    # Process the data (Upper Case - as the simple function intended)
+                    original = received_data.decode('utf-8', errors='ignore')
+                    modifiedMessage = original.upper()  # From original code
+                    
+                    print("-" * 70)
+                    print(f"[SERVER] Received: '{original}'")
+                    print(f"[SERVER] Uppercase: '{modifiedMessage}'")
+                    print(f"[SERVER] Total bytes received: {len(received_data)}")
+                    print("-" * 70)
+                    
+                    # Reset buffer for next message (expected_seq continues incrementing!)
+                    receiver.received_data = b''
+                    receiver.available_buffer = receiver.MAX_BUFFER_SIZE
+                    print(f"\n[SERVER] Ready for next message (expected_seq={receiver.expected_seq})...")
+                else:
+                    # Timeout or error - disconnect
+                    print("[SERVER] Client disconnected or timeout")
+                    receiver.connected = False
+                    break
             
-            # Reset receiver state for next connection (don't close socket!)
-            receiver.connected = False
+            # Reset receiver state for next connection
             receiver.expected_seq = 0
             receiver.received_data = b''
             receiver.available_buffer = receiver.MAX_BUFFER_SIZE

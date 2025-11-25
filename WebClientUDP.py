@@ -14,13 +14,13 @@ class GoBackNSender:
     # - Flow control via receiver advertised window
     
     def __init__(self, window_size=5, timeout=2.0):
-        """
-        Initialize Go-Back-N Sender
+
+        # Initialize Go-Back-N Sender
         
-        Args:
-            window_size: Initial maximum number of unacknowledged packets
-            timeout: Timeout interval in seconds
-        """
+        # Args:
+        #     window_size: Initial maximum number of unacknowledged packets
+        #     timeout: Timeout interval in seconds
+
         self.socket = socket(AF_INET, SOCK_DGRAM)
         self.socket.settimeout(0.1)  # Non-blocking for ACK reception
         
@@ -104,8 +104,9 @@ class GoBackNSender:
             
             # Connection established!
             self.connected = True
-            self.base = ack_packet.seq_num
-            self.next_seq_num = ack_packet.seq_num
+            # Reset sequence numbers for data transfer (start from 0)
+            self.base = 0
+            self.next_seq_num = 0
             
             # Return to non-blocking mode for data transfer
             self.socket.settimeout(0.1)
@@ -141,13 +142,14 @@ class GoBackNSender:
         max_chunk_size = PRTPPacket.MAX_DATA_SIZE
         chunks = [data[i:i+max_chunk_size] for i in range(0, len(data), max_chunk_size)]
         
-        total_packets = len(chunks)
-        print(f"[CLIENT SENDER] Sending {len(data)} bytes in {total_packets} packets")
+        # Calculate packet range for this message
+        start_seq = self.next_seq_num
+        end_seq = start_seq + len(chunks)
         
-        chunk_index = 0
+        print(f"[CLIENT SENDER] Sending {len(data)} bytes in {len(chunks)} packets (seq {start_seq}-{end_seq-1})")
         
-        # while oldest unack-ed packet seq num is less than total packets
-        while self.base < total_packets:
+        # while oldest unack-ed packet seq num is less than end of this message
+        while self.base < end_seq:
             # lock thread to prevent race conditions with other threads, i.e. recieve_acks()
             with self.lock:
                 # Calculate effective window (min of congestion window and flow control window)
@@ -156,15 +158,18 @@ class GoBackNSender:
                 effective_window = min(int(self.cwnd), int(receiver_window_packets), self.max_window_size)
                 
                 # Send packets within effective window
-                while self.next_seq_num < total_packets and \
+                while self.next_seq_num < end_seq and \
                       self.next_seq_num < self.base + effective_window:
+                    
+                    # Calculate chunk index for this message
+                    chunk_idx = self.next_seq_num - start_seq
                     
                     # Create packet
                     packet = PRTPPacket(
                         seq_num=self.next_seq_num,
                         ack_num=0,
                         flags=PRTPPacket.FLAG_ACK,
-                        data=chunks[self.next_seq_num]
+                        data=chunks[chunk_idx]
                     )
                     
                     # Send packet
@@ -189,7 +194,7 @@ class GoBackNSender:
             
             # Check for timeout
             with self.lock:
-                if self.timer_running and self.base < total_packets:
+                if self.timer_running and self.base < end_seq:
                     elapsed = time.time() - self.timer_start
                     if elapsed >= self.timeout:
                         # Congestion detected, initiate retransmission
@@ -207,7 +212,7 @@ class GoBackNSender:
                         self._retransmit_window()
                         self._start_timer()
         
-        print(f"[CLIENT SENDER] All {total_packets} packets acknowledged!")
+        print(f"[CLIENT SENDER] All packets {start_seq}-{end_seq-1} acknowledged!")
         return len(data)
     
     def _receive_acks(self):
